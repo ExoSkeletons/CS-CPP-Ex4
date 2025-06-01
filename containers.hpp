@@ -74,8 +74,6 @@ namespace containers {
 
             Iterator &operator=(const Iterator &other) = default;
 
-            explicit Iterator(const Iterator *compose): c(compose->c) {}
-
             virtual ~Iterator() = default;
 
             Iterator &begin() {
