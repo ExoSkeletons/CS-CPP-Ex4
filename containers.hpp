@@ -5,6 +5,7 @@
 #ifndef CONTAINERS_HPP
 #define CONTAINERS_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <stdexcept>
@@ -19,11 +20,11 @@ namespace containers {
     public:
         MyContainer() = default;
 
-        MyContainer(const MyContainer &other) { (*this) = other; }
+        MyContainer(const MyContainer &other) { *this = other; }
 
         MyContainer &operator=(const MyContainer &other) {
             data.clear();
-            for (auto d: other.data) data.push_back(d);
+            for (const auto &d: other.data) data.push_back(d);
             return *this;
         }
 
@@ -48,8 +49,8 @@ namespace containers {
 
         /* Operators */
 
-        T &operator[](size_t index) { return data[index]; }
-        T &operator[](size_t index) const { return data[index]; }
+        T &operator[](size_t index) { return data.at(index); }
+        const T &operator[](size_t index) const { return data.at(index); }
 
         friend std::ostream &operator<<(std::ostream &os, const MyContainer &c) {
             for (const auto &item: c.data) os << item << " ";
@@ -59,20 +60,32 @@ namespace containers {
         /* Iterators */
 
     private:
-        template<bool reverse>
         class Iterator {
         protected:
             int pos = 0;
-            MyContainer c;
+            std::vector<T> data;
 
-            virtual int map(const int i) { return i; };
+            // maps an index to its actual position in the container.
+            // allows derived classes to provide their own indexing formula.
+            virtual int mapIndex(const int i) const { return i; }
 
         public:
-            explicit Iterator(MyContainer &c) { this.c = c; }
+            explicit Iterator(MyContainer &c, const bool reverse = false) {
+                pos = 0;
+                data.clear();
+                data.reserve(c.data.size());
+                for (const auto &d: c.data) data.emplace_back(d);
+                if (reverse) std::reverse(data.begin(), data.end());
+            }
 
-            Iterator(const Iterator &other) = default;
+            Iterator(const Iterator &other) { *this = other; }
 
-            Iterator &operator=(const Iterator &other) = default;
+            Iterator &operator=(const Iterator &other) {
+                pos = other.pos;
+                data.clear();
+                for (const auto &v: other.data) data.push_back(v);
+                return *this;
+            }
 
             virtual ~Iterator() = default;
 
@@ -89,70 +102,175 @@ namespace containers {
             explicit operator bool() const { return pos < data.size(); }
             explicit operator int() const { return pos; }
 
-            int index(const int i) { return map(!reverse ? pos + i : c.size() - 1 - pos - i); }
+            T &operator[](const int i) {
+                const auto index = mapIndex(i + pos);
+                if (index >= data.size() || index < 0) throw std::out_of_range("Iterator out of range");
+                return data[index];
+            }
 
-            T &operator*() { return c[index(0)]; }
-            T *operator->() { return &(*this)[0]; }
-            T &operator [](const int i) const { return c[index(i)]; }
+            const T &operator[](const int i) const {
+                const auto index = mapIndex(i + pos);
+                if (index >= data.size() || index < 0) throw std::out_of_range("Iterator out of range");
+                return data[index];
+            }
 
-            Iterator &operator++() {
+            T &operator*() { return (*this)[0]; }
+
+            auto &operator++() {
                 pos++;
                 return *this;
             }
 
-            Iterator &operator--() {
+            auto operator++(int) {
+                Iterator tmp = *this;
+                pos++;
+                return tmp;
+            }
+
+            auto &operator--() {
                 pos--;
                 return *this;
             }
-        };
 
-        template<bool desc>
-        class SortedOrder : public Iterator<desc> {
-        public:
-            explicit SortedOrder(MyContainer c) : Iterator<desc>(c) { sort(c.data.begin(), c.data.end()); }
+            auto operator--(int) {
+                Iterator tmp = *this;
+                pos--;
+                return tmp;
+            }
+
+            bool operator==(const Iterator &other) const = default;
+
+            bool operator!=(const Iterator &other) const = default;
         };
 
     public:
-        typedef Iterator<false> Order;
-        typedef Iterator<true> ReverseOrder;
-
-        class AscendingOrder : public SortedOrder<false> {
+        class Order : public Iterator {
         public:
-            explicit AscendingOrder(const MyContainer &c) : SortedOrder<false>(c) {}
+            explicit Order(MyContainer &c) : Iterator(c, false) {}
         };
 
-        class DescendingOrder : public SortedOrder<true> {
+        class ReverseOrder : public Iterator {
         public:
-            explicit DescendingOrder(const MyContainer &c) : SortedOrder<true>(c) {}
+            explicit ReverseOrder(MyContainer &c) : Iterator(c, true) {}
+        };
+
+    private:
+        class SortedIterator : public Order {
+        public:
+            explicit SortedIterator(MyContainer &c, const bool asc = true) : Order(c) {
+                sort(this->data.begin(), this->data.end());
+                if (!asc) std::reverse(this->data.begin(), this->data.end());
+            }
+        };
+
+    public:
+        class AscendingOrder : public SortedIterator {
+        public:
+            explicit AscendingOrder(MyContainer &c) : SortedIterator(c, true) {}
+        };
+
+        class DescendingOrder : public SortedIterator {
+        public:
+            explicit DescendingOrder(MyContainer &c) : SortedIterator(c, false) {}
         };
 
         class SideCrossOrder final : public AscendingOrder {
         protected:
-            int map(const int i) override { return i % 2 != 0 ? i : this->c.size() - 1 - i; }
+            int mapIndex(const int i) const override { return i % 2 == 0 ? i / 2 : this->data.size() - 1 - i / 2; }
+
+        public:
+            explicit SideCrossOrder(MyContainer &c) : AscendingOrder(c) {}
         };
 
         class MiddleOutOrder final : public AscendingOrder {
         protected:
-            int map(const int i) override {
-                auto mid = this->c.size() / 2;
-                return i % 2 == 0 ? mid + i : mid - i;
+            int mapIndex(const int i) const override {
+                auto mid = this->data.size() / 2;
+                return i % 2 == 0 ? mid + (i + 1) / 2 : mid - (i + 1) / 2;
             }
+
+        public:
+            explicit MiddleOutOrder(MyContainer &c) : AscendingOrder(c) {}
         };
 
 
-        Order begin_order() { return Order(*this).begin(); }
-        Order end_order() { return Order(*this).end(); }
-        ReverseOrder begin_reverse_order() { return Order(*this).begin(); }
-        ReverseOrder end_reverse_order() { return Order(*this).end(); }
-        AscendingOrder begin_ascending_order() { return AscendingOrder(*this).begin(); }
-        AscendingOrder end_ascending_order() { return AscendingOrder(*this).end(); }
-        DescendingOrder begin_descending_order() { return DescendingOrder(*this).begin(); }
-        DescendingOrder end_descending_order() { return DescendingOrder(*this).end(); }
-        SideCrossOrder begin_side_cross_order() { return SideCrossOrder(*this).begin(); }
-        SideCrossOrder end_side_cross_order() { return SideCrossOrder(*this).end(); }
-        MiddleOutOrder begin_middle_out_order() { return MiddleOutOrder(*this).begin(); }
-        MiddleOutOrder end_middle_out_order() { return MiddleOutOrder(*this).end(); }
+        Order begin_order() {
+            auto it = Order(*this);
+            it.begin();
+            return it;
+        }
+
+        Order end_order() {
+            auto it = Order(*this);
+            it.end();
+            return it;
+        }
+
+        ReverseOrder begin_reverse_order() {
+            auto it = ReverseOrder(*this);
+            it.begin();
+            return it;
+        }
+
+        ReverseOrder end_reverse_order() {
+            auto it = ReverseOrder(*this);
+            it.end();
+            return it;
+        }
+
+        AscendingOrder begin_ascending_order() {
+            auto it = AscendingOrder(*this);
+            it.begin();
+            return it;
+        }
+
+        AscendingOrder end_ascending_order() {
+            auto it = AscendingOrder(*this);
+            it.end();
+            return it;
+        }
+
+        DescendingOrder begin_descending_order() {
+            auto it = DescendingOrder(*this);
+            it.begin();
+            return it;
+        }
+
+        DescendingOrder end_descending_order() {
+            auto it = DescendingOrder(*this);
+            it.end();
+            return it;
+        }
+
+        SideCrossOrder begin_side_cross_order() {
+            auto it = SideCrossOrder(*this);
+            it.begin();
+            return it;
+        }
+
+        SideCrossOrder end_side_cross_order() {
+            auto it = SideCrossOrder(*this);
+            it.end();
+            return it;
+        }
+
+        MiddleOutOrder begin_middle_out_order() {
+            auto it = MiddleOutOrder(*this);
+            it.begin();
+            return it;
+        }
+
+        MiddleOutOrder end_middle_out_order() {
+            auto it = MiddleOutOrder(*this);
+            it.end();
+            return it;
+        }
     };
+
+    template class MyContainer<int>;
+    template class MyContainer<double>;
+    template class MyContainer<char>;
+    template class MyContainer<std::string>;
 } // namespace containers
 
 
