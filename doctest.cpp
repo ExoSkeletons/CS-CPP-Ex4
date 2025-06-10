@@ -6,7 +6,7 @@
 using namespace containers;
 
 
-TEST_CASE("Basic container operations") {
+TEST_CASE("operations") {
     // Create a container and check its initial state
     MyContainer<int> c;
     CHECK(c.size() == 0); // Container should start empty
@@ -15,13 +15,13 @@ TEST_CASE("Basic container operations") {
     c.add(5);
     c.add(3);
     c.add(9);
-    CHECK(c.size() == 3); // Size should reflect 3 added elements
+    CHECK(c.size() == 3); // check size
 
     // Index-based access and bounds checking
-    CHECK(c[0] == 5);     // First element
-    CHECK_THROWS_AS(c[3], std::runtime_error); // Out-of-bounds access
+    CHECK(c[0] == 5); // First element
+    CHECK_THROWS(c[3]); // Out-of-bounds access
 
-    // Remove an existing element and verify the size
+    // Remove
     c.remove(3);
     CHECK(c.size() == 2);
 
@@ -29,7 +29,7 @@ TEST_CASE("Basic container operations") {
     CHECK_THROWS(c.remove(100));
 }
 
-TEST_CASE("Copy and assignment behavior") {
+TEST_CASE("Copy, =") {
     // Test copy constructor
     MyContainer<int> a;
     a.add(1);
@@ -48,92 +48,93 @@ TEST_CASE("Copy and assignment behavior") {
     CHECK(c[1] == 2);
 }
 
-TEST_CASE("Iterator - Order") {
-    // Iterates over elements in the order they were added
-    MyContainer<int> c;
-    c.add(1);
-    c.add(2);
-    c.add(3);
+TEST_SUITE("Iterators") {
+    TEST_CASE("Iterator - Order") {
+        // Iterates over elements in the order they were added
+        MyContainer<int> c;
+        c.add(1);
+        c.add(2);
+        c.add(3);
 
-    auto it = c.begin_order();
-    std::vector<int> out;
-    while (it) out.push_back(*it++);
+        auto it = c.begin_order();
+        std::vector<int> out;
+        while (it) out.push_back(*it++);
 
-    CHECK(out == std::vector<int>{1, 2, 3});
-}
+        CHECK(out == std::vector{1, 2, 3});
+    }
 
-TEST_CASE("Iterator - Reverse Order") {
-    // Iterates over elements in reverse order of addition
-    MyContainer<int> c;
-    c.add(1);
-    c.add(2);
-    c.add(3);
+    TEST_CASE("Iterator - Reverse Order") {
+        // Iterates over elements in reverse order of addition
+        MyContainer<int> c;
+        c.add(1);
+        c.add(2);
+        c.add(3);
 
-    auto it = c.begin_reverse_order();
-    std::vector<int> out;
-    while (it) out.push_back(*it++);
+        auto it = c.begin_reverse_order();
+        std::vector<int> out;
+        while (it) out.push_back(*it++);
 
-    CHECK(out == std::vector<int>{3, 2, 1});
-}
+        CHECK(out == std::vector{3, 2, 1});
+    }
 
-TEST_CASE("Iterator - Ascending Order") {
-    // Iterates over elements sorted in ascending order
-    MyContainer<int> c;
-    c.add(8);
-    c.add(1);
-    c.add(5);
+    TEST_CASE("Iterator - Ascending Order") {
+        // Iterates over elements sorted in ascending order
+        MyContainer<int> c;
+        c.add(8);
+        c.add(1);
+        c.add(5);
 
-    auto it = c.begin_ascending_order();
-    std::vector<int> out;
-    while (it) out.push_back(*it++);
+        auto it = c.begin_ascending_order();
+        std::vector<int> out;
+        while (it) out.push_back(*it++);
 
-    CHECK(out == std::vector<int>{1, 5, 8});
-}
+        CHECK(out == std::vector{1, 5, 8});
+    }
 
-TEST_CASE("Iterator - Descending Order") {
-    // Iterates over elements sorted in descending order
-    MyContainer<int> c;
-    c.add(8);
-    c.add(1);
-    c.add(5);
+    TEST_CASE("Iterator - Descending Order") {
+        // Iterates over elements sorted in descending order
+        MyContainer<int> c;
+        c.add(8);
+        c.add(1);
+        c.add(5);
 
-    auto it = c.begin_descending_order();
-    std::vector<int> out;
-    while (it) out.push_back(*it++);
+        auto it = c.begin_descending_order();
+        std::vector<int> out;
+        while (it) out.push_back(*it++);
 
-    CHECK(out == std::vector<int>{8, 5, 1});
-}
+        CHECK(out == std::vector{8, 5, 1});
+    }
 
-TEST_CASE("Iterator - SideCross Order") {
-    MyContainer<int> c;
-    c.add(1);
-    c.add(2);
-    c.add(3);
-    c.add(4);
-    c.add(5);
+    TEST_CASE("Iterator - SideCross Order") {
+        MyContainer<int> c;
+        c.add(1);
+        c.add(2);
+        c.add(3);
+        c.add(4);
+        c.add(5);
 
-    auto it = c.begin_side_cross_order();
-    std::vector<int> out;
-    while (it)
-        out.push_back(*it++);
+        auto it = c.begin_side_cross_order();
+        std::vector<int> out;
+        while (it)out.push_back(*it++);
 
-    // Expected order
-    CHECK(out == std::vector{1, 5, 2, 4, 3});
-}
+        // Expected order
+        CHECK(out == std::vector{1, 5, 2, 4, 3});
+    }
 
-TEST_CASE("Iterator - MiddleOut Order") {
-    // Iterates starting from the middle and expanding outward
-    MyContainer<int> c;
-    c.add(1);
-    c.add(2);
-    c.add(3);
-    c.add(4);
-    c.add(5);
+    TEST_CASE("Iterator - MiddleOut Order") {
+        // Iterates starting from the middle and expanding outward
+        MyContainer<int> c;
+        c.add(1);
+        c.add(2);
+        c.add(3);
+        c.add(4);
+        c.add(5);
 
-    auto it = c.begin_middle_out_order();
-    std::vector<int> out;
-    while (it) out.push_back(*it++);
+        auto it = c.begin_middle_out_order();
+        std::vector<int> out;
+        while (it) out.push_back(*it++);
 
-    // Expected: 3, 2, 4, 1, 5
-    CHECK(out == std::vector{3, 2, 4, 1, 5});
+        // Expected
+        CHECK(out == std::vector{3, 2, 4, 1, 5});
+    }
 }
