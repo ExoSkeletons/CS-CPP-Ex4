@@ -49,8 +49,15 @@ namespace containers {
 
         /* Operators */
 
-        T &operator[](size_t index) { return data.at(index); }
-        const T &operator[](size_t index) const { return data.at(index); }
+        T &operator[](size_t index) {
+            if (index >= data.size()) throw std::runtime_error("Index out of range");
+            return data.at(index);
+        }
+
+        const T &operator[](size_t index) const {
+            if (index >= data.size()) throw std::runtime_error("Index out of range");
+            return data.at(index);
+        }
 
         friend std::ostream &operator<<(std::ostream &os, const MyContainer &c) {
             for (const auto &item: c.data) os << item << " ";
