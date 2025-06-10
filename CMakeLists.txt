@@ -6,3 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(Ex4 main.cpp
         containers.cpp
         containers.hpp)
+add_executable(tests
+        containers.cpp
+        containers.hpp
+        doctest.cpp
+        doctest.hpp)
