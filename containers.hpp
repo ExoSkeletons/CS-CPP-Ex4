@@ -72,10 +72,6 @@ namespace containers {
             int pos = 0;
             std::vector<T> data;
 
-            // maps an index to its actual position in the container.
-            // allows derived classes to provide their own indexing formula.
-            virtual int mapIndex(const int i) const { return i; }
-
         public:
             explicit Iterator(MyContainer &c, const bool reverse = false) {
                 pos = 0;
@@ -110,13 +106,13 @@ namespace containers {
             explicit operator int() const { return pos; }
 
             T &operator[](const int i) {
-                const auto index = mapIndex(i + pos);
+                const auto index = i + pos;
                 if (index >= data.size() || index < 0) throw std::out_of_range("Iterator out of range");
                 return data[index];
             }
 
             const T &operator[](const int i) const {
-                const auto index = mapIndex(i + pos);
+                const auto index = i + pos;
                 if (index >= data.size() || index < 0) throw std::out_of_range("Iterator out of range");
                 return data[index];
             }
@@ -182,22 +178,31 @@ namespace containers {
         };
 
         class SideCrossOrder final : public AscendingOrder {
-        protected:
-            int mapIndex(const int i) const override { return i % 2 == 0 ? i / 2 : this->data.size() - 1 - i / 2; }
-
         public:
-            explicit SideCrossOrder(MyContainer &c) : AscendingOrder(c) {}
+            explicit SideCrossOrder(MyContainer &c) : AscendingOrder(c) {
+                std::vector<T> tmp;
+                const int n = this->data.size();
+                tmp.reserve(n);
+                for (size_t i = 0; i < n; ++i) {
+                    int sc_index = i % 2 == 0 ? i / 2 : n - 1 - i / 2;
+                    tmp.push_back(this->data[sc_index]);
+                }
+                this->data = std::move(tmp);
+            }
         };
 
         class MiddleOutOrder final : public AscendingOrder {
-        protected:
-            int mapIndex(const int i) const override {
-                auto mid = this->data.size() / 2;
-                return i % 2 == 0 ? mid + (i + 1) / 2 : mid - (i + 1) / 2;
-            }
-
         public:
-            explicit MiddleOutOrder(MyContainer &c) : AscendingOrder(c) {}
+            explicit MiddleOutOrder(MyContainer &c) : AscendingOrder(c) {
+                std::vector<T> tmp;
+                const int n = this->data.size(), mid = n / 2;
+                tmp.reserve(n);
+                for (int i = 0; i < n; ++i) {
+                    int mo_index = i % 2 == 0 ? mid + i / 2 : mid - i / 2 - 1;
+                    tmp.push_back(this->data[mo_index]);
+                }
+                this->data = std::move(tmp);
+            }
         };
 
 
